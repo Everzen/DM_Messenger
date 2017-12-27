@@ -5,18 +5,18 @@ import json
 from slackclient import SlackClient
 
 #Tempory development token to talk to SVFX-DND-ADVENTURE.slack.com - This validates user DM sending direct messages too! 
-# slackdevToken = "xoxp-162387755312-163775617798-263442665682-303e123723913ef7c64a5567cfd962f1"  # DM control for SVFX
+slackdevToken = "xoxp-162387755312-163775617798-263442665682-303e123723913ef7c64a5567cfd962f1"  # DM control for SVFX
 # slackdevToken = "xoxp-280884692148-281914893415-287653198435-97a41086c515fb1e3aa0af69ecd5f6dc"  # Humble Servant control for DNKnee
 # slackdevToken = "xoxp-280884692148-280325517569-287657570707-1ee4b05de3fdb3c8a8f964ba3b053227"  # Dm Control control for DNKnee
 # slackdevToken = "xoxp-288684413254-288886548967-288062102037-cd18250efa00223a817c8fd174464a01"  # Humble Servant control for Illumria
-slackdevToken = "xoxp-288684413254-288888280631-287967554916-f69130adfbf2af2fe3871bb018a489b9"  # Dm Control control for Illumria
+# slackdevToken = "xoxp-288684413254-288888280631-287967554916-f69130adfbf2af2fe3871bb018a489b9"  # Dm Control control for Illumria
 
 
 slack_client = SlackClient(slackdevToken)
 
-# jsonFile = 'resources\MessengerData_SVFX.json'U8GS488JK
+jsonFile = 'resources\MessengerData_SVFX.json'
 # jsonFile = 'resources\MessengerData_DnKnee.json'
-jsonFile = 'resources\MessengerData_Illumria.json'
+# jsonFile = 'resources\MessengerData_Illumria.json'
 
 tabColumnWidth = 405
 
@@ -183,22 +183,42 @@ class TabDialog(QtGui.QDialog):
 
 
 
+class statementsQLW(QtGui.QListWidget):
+    def __init__(self, parent=None):
+        super(statementsQLW, self).__init__(parent)
+        self.setContextMenuPolicy(QtCore.Qt.CustomContextMenu) #context menu for user data
+        self.customContextMenuRequested.connect(self.userMenu)
+    
+    def userMenu(self, position):
+        print (str(self.itemAt(position)))
+        menu = QtGui.QMenu()
+        if not (self.itemAt(position)): #Test right Click Position - have we hit an item
+            menu.addAction(self.tr("Add New Statement"))
+        else: 
+            menu.addAction(self.tr("Edit Statement"))
+            menu.addAction(self.tr("Delete Statement"))
+        menu.exec_(self.viewport().mapToGlobal(position))
 
+    def addItems(self, statementList):
+        LItems = []
+        for text in statementList:
+            print (text["statement"])
+            newListItem = QtGui.QListWidgetItem((text["statement"]))
+            newListItem.setFlags(QtCore.Qt.ItemIsSelectable | QtCore.Qt.ItemIsEnabled | QtCore.Qt.ItemIsEditable)
+            self.addItem(newListItem)
 
 class CommonStatementsTab(QtGui.QWidget):
     def __init__(self, parent=None):
         super(CommonStatementsTab, self).__init__(parent)
 
-        statementsListBox = QtGui.QListWidget()
+        statementsListBox = statementsQLW()
         statementsListBox.setMinimumWidth(tabColumnWidth)
         statements = []
 
         #Grab all the common Questions
         commonStatements = grabInfo("CommonStatements")
-        for text in commonStatements:
-            statements.append(text["statement"])
-
-        statementsListBox.insertItems(0, statements)
+        print (commonStatements)
+        statementsListBox.addItems(commonStatements)
         layout = QtGui.QVBoxLayout()
         layout.addWidget(statementsListBox)
         self.setLayout(layout)
@@ -273,3 +293,8 @@ if __name__ == '__main__':
 
 	tabdialog = TabDialog(fileName)
 	sys.exit(tabdialog.exec_())
+
+
+
+#####################
+#  List Widget Items .... self.setFlags(QtCore.Qt.ItemIsSelectable | QtCore.Qt.ItemIsEnabled)
