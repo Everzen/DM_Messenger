@@ -4,15 +4,9 @@ import qdarkstyle
 import json
 from slackclient import SlackClient
 
+
+
 #Tempory development token to talk to SVFX-DND-ADVENTURE.slack.com - This validates user DM sending direct messages too! 
-slackdevToken = "xoxp-162387755312-163775617798-263442665682-303e123723913ef7c64a5567cfd962f1"  # DM control for SVFX
-# slackdevToken = "xoxp-280884692148-281914893415-287653198435-97a41086c515fb1e3aa0af69ecd5f6dc"  # Humble Servant control for DNKnee
-# slackdevToken = "xoxp-280884692148-280325517569-287657570707-1ee4b05de3fdb3c8a8f964ba3b053227"  # Dm Control control for DNKnee
-# slackdevToken = "xoxp-288684413254-288886548967-288062102037-cd18250efa00223a817c8fd174464a01"  # Humble Servant control for Illumria
-# slackdevToken = "xoxp-288684413254-288888280631-287967554916-f69130adfbf2af2fe3871bb018a489b9"  # Dm Control control for Illumria
-
-
-slack_client = SlackClient(slackdevToken)
 
 jsonFile = 'resources\MessengerData_SVFX.json'
 # jsonFile = 'resources\MessengerData_DnKnee.json'
@@ -24,6 +18,22 @@ def grabInfo(infoType):
     with open(jsonFile) as json_file:
             info = json.load(json_file)
             return info[infoType]
+
+#Saving JSON
+# import json
+# with open('data.json', 'w') as fp:
+#     json.dump(data, fp)
+
+
+DMInfo = None
+
+with open(jsonFile) as json_file:
+    DMInfo = json.load(json_file)
+
+
+##Grab the securtiy information from the Json file....
+slackdevToken = DMInfo["security"]
+slack_client = SlackClient(slackdevToken["DMToken"])
 
 
 class TabDialog(QtGui.QDialog):
@@ -48,7 +58,7 @@ class TabDialog(QtGui.QDialog):
         regardLabel = QtGui.QLabel("REGARDING:")
         regardingListLW =  QtGui.QListWidget()
         regardingListLW.setMaximumWidth(userColumnWidth)
-        regardingList = grabInfo("regardings")
+        regardingList = DMInfo["regardings"]
 
         regardingListLW.insertItems(0, regardingList)
 
@@ -59,7 +69,7 @@ class TabDialog(QtGui.QDialog):
 
         #Grab all the voices
         voiceLabel = QtGui.QLabel("VOICE ORIGIN:")
-        voiceList = grabInfo("voices")
+        voiceList = DMInfo["voices"]
         for text in voiceList:
             voices.append(text["name"])
 
@@ -74,7 +84,7 @@ class TabDialog(QtGui.QDialog):
         players = []
 
         #Grab all the Players
-        playerList = grabInfo("players")
+        playerList = DMInfo["players"]
         for text in playerList:
             players.append(text["character"] + " (" + text['name'] + ")")
 
@@ -202,7 +212,6 @@ class statementsQLW(QtGui.QListWidget):
     def addItems(self, statementList):
         LItems = []
         for text in statementList:
-            print (text["statement"])
             newListItem = QtGui.QListWidgetItem((text["statement"]))
             newListItem.setFlags(QtCore.Qt.ItemIsSelectable | QtCore.Qt.ItemIsEnabled | QtCore.Qt.ItemIsEditable)
             self.addItem(newListItem)
@@ -216,8 +225,7 @@ class CommonStatementsTab(QtGui.QWidget):
         statements = []
 
         #Grab all the common Questions
-        commonStatements = grabInfo("CommonStatements")
-        print (commonStatements)
+        commonStatements = DMInfo["CommonStatements"]
         statementsListBox.addItems(commonStatements)
         layout = QtGui.QVBoxLayout()
         layout.addWidget(statementsListBox)
@@ -233,7 +241,7 @@ class RelativeStatementsTab(QtGui.QWidget):
         statements = []
 
         #Grab all the common Questions
-        commonStatements = grabInfo("RelativeStatements")
+        commonStatements = DMInfo["RelativeStatements"]
         for text in commonStatements:
             statements.append(text["statement"])
 
@@ -251,7 +259,7 @@ class QuestionsTab(QtGui.QWidget):
         statements = []
 
         #Grab all the common Questions
-        commonStatements = grabInfo("Questions")
+        commonStatements = DMInfo["Questions"]
         for text in commonStatements:
             statements.append(text["statement"])
 
@@ -270,7 +278,7 @@ class QuestSpecificTab(QtGui.QWidget):
         statements = []
 
         #Grab all the common Questions
-        commonStatements = grabInfo("QuestStatements")
+        commonStatements = DMInfo["QuestStatements"]
         for text in commonStatements:
             statements.append(text["statement"])
 
