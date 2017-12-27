@@ -36,6 +36,18 @@ slackdevToken = DMInfo["security"]
 slack_client = SlackClient(slackdevToken["DMToken"])
 
 
+# print(str(DMInfo))
+
+# print (" ----------------------------------------")
+
+# DMInfo["voices"].append({"name" : "badger", "asUser" : 0})
+
+# print(str(DMInfo))
+
+def saveJson():
+    with open(jsonFile, 'w') as json_file:
+        json.dump(DMInfo, json_file)
+
 class TabDialog(QtGui.QDialog):
     def __init__(self, fileName, parent=None):
         super(TabDialog, self).__init__(parent)
@@ -200,14 +212,23 @@ class statementsQLW(QtGui.QListWidget):
         self.customContextMenuRequested.connect(self.userMenu)
     
     def userMenu(self, position):
-        print (str(self.itemAt(position)))
         menu = QtGui.QMenu()
+        addStatement = "Nothing"
+        editStatement = "Nothing"
+        delStatement = "Nothing"
         if not (self.itemAt(position)): #Test right Click Position - have we hit an item
-            menu.addAction(self.tr("Add New Statement"))
+            addStatement = menu.addAction(self.tr("Add New Statement"))
         else: 
-            menu.addAction(self.tr("Edit Statement"))
-            menu.addAction(self.tr("Delete Statement"))
-        menu.exec_(self.viewport().mapToGlobal(position))
+            # editStatement = menu.addAction(self.tr("Edit Statement"))
+            delStatement = menu.addAction(self.tr("Delete Statement"))
+        action = menu.exec_(self.viewport().mapToGlobal(position))
+        if action == addStatement:
+            # print ("Adding Statement")
+            self.addStatement()
+        elif action == delStatement:
+            # print("Deleting Statement")
+            self.deleteStatement(position)
+
 
     def addItems(self, statementList):
         LItems = []
@@ -215,6 +236,29 @@ class statementsQLW(QtGui.QListWidget):
             newListItem = QtGui.QListWidgetItem((text["statement"]))
             newListItem.setFlags(QtCore.Qt.ItemIsSelectable | QtCore.Qt.ItemIsEnabled | QtCore.Qt.ItemIsEditable)
             self.addItem(newListItem)
+
+
+    def populate(self):
+        self.clear()
+        self.addItems(DMInfo["CommonStatements"])
+
+
+    def addStatement(self):
+        DMInfo["CommonStatements"].append({"visible":1, "statement": "Edit this new Statement"})
+        saveJson() #Save the new Json File
+        self.populate()
+
+    def deleteStatement(self, position):
+        delItem = self.itemAt(position)
+        rowIndex = self.row(delItem)
+        reply = QtGui.QMessageBox.question(self, 'Confirmation',
+                    "Are you sure to delete the statement " "\"" + delItem.text() + "\"?", QtGui.QMessageBox.Yes | 
+                    QtGui.QMessageBox.No, QtGui.QMessageBox.No)
+        if reply == QtGui.QMessageBox.Yes:
+            del(DMInfo["CommonStatements"][rowIndex])
+            saveJson() #Save the new Json File
+            self.populate()
+
 
 class CommonStatementsTab(QtGui.QWidget):
     def __init__(self, parent=None):
