@@ -12,6 +12,9 @@ jsonFile = 'resources\MessengerData_SVFX.json'
 # jsonFile = 'resources\MessengerData_DnKnee.json'
 # jsonFile = 'resources\MessengerData_Illumria.json'
 
+statementCategories = {"CommonStatements" : "Common Statements", "RelativeStatements" : "Relative Statements", "Questions" : "Questions", "QuestStatements": "Quest Specific"}
+# print ("Keys " + str(statementCategories.keys()))
+
 tabColumnWidth = 405
 
 def grabInfo(infoType):
@@ -32,8 +35,8 @@ with open(jsonFile) as json_file:
 
 
 ##Grab the securtiy information from the Json file....
-slackdevToken = DMInfo["security"]
-slack_client = SlackClient(slackdevToken["DMToken"])
+# slackdevToken = DMInfo["security"]
+# slack_client = SlackClient(slackdevToken["DMToken"])
 
 
 # print(str(DMInfo))
@@ -44,9 +47,106 @@ slack_client = SlackClient(slackdevToken["DMToken"])
 
 # print(str(DMInfo))
 
+
 def saveJson():
     with open(jsonFile, 'w') as json_file:
         json.dump(DMInfo, json_file)
+
+
+
+
+##############################DEFINE CLASSES TO HANDLE JSON############################
+
+class Statement(object):
+    def __init__(self, statementJson):
+        self.rawJson = statementJson
+        self.lwItem = self.setLWItem()
+    
+    def getLWItem(self):
+        return self.lwItem
+
+    def setLWItem(self):
+        # print ("My Raw JSon is : " + str(self.rawJson))
+        # print("My statemment is : " + str(self.rawJson["statement"]))
+        newItem = QtGui.QListWidgetItem((self.rawJson["statement"]))
+        newItem.setFlags(QtCore.Qt.ItemIsSelectable | QtCore.Qt.ItemIsEnabled | QtCore.Qt.ItemIsEditable | QtCore.Qt.ItemIsDragEnabled | QtCore.Qt.ItemIsDropEnabled)
+        return newItem
+        
+    def set(statementText):
+        self.rawJson["statement"] = statementText
+        self.lwItem.setText(statementText)
+
+    def get(self):
+        return self.rawJson
+
+
+class StatementList(object):
+    def __init__(self, categoryJson):
+        self.rawJson = categoryJson
+        self.statements = self.collectStatements()
+
+    def collectStatements(self):
+        # print ("Category JSon : " + str(self.rawJson))
+        newList = []
+        for statementJson in self.rawJson:
+            newStatement = Statement(statementJson)
+            newList.append(newStatement)
+        return newList
+
+    def getStatements(self):
+        return self.statements
+
+
+
+class DMInformation(object):
+    def __init__(self, fileName, categories):
+        self.fileName = fileName
+        self.rawJson = self.loadJson()
+        self.statementCategories = statementCategories
+        self.categoryTitles = categories.keys()
+        self.categoryDicts = self.collectStatementLists()
+
+    def loadJson(self):
+        with open(self.fileName) as json_file:
+            return json.load(json_file)
+
+    def getSecurity(self, dev = False):
+        if dev:
+            return self.rawJson["security"]["DevToken"]
+        else:
+            return self.rawJson["security"]["DMToken"]
+
+    def save(self):
+        with open(self.fileName, 'w') as json_file:
+            json.dump(self.rawJson, json_file)
+
+    def collectStatementLists(self):
+        newStatementDic = {}
+        for cat in self.categoryTitles:
+            list = StatementList(self.rawJson[cat])
+            newStatementDic.update({cat : list})
+        # print("New Statement Dictionaries " + str(newStatementDic))
+        return newStatementDic
+
+    def getCategoryList(self, category):
+        return self.categoryDicts[category] 
+
+    def getRegardings(self):
+        return self.rawJson["regardings"]
+
+    def getVoices(self):
+        return self.rawJson["voices"]
+
+    def getPlayers(self):
+        return self.rawJson["players"]
+
+DMInfo = DMInformation(jsonFile, statementCategories)
+
+slack_client = SlackClient(DMInfo.getSecurity())
+
+
+
+
 
 class TabDialog(QtGui.QDialog):
     def __init__(self, fileName, parent=None):
@@ -70,7 +170,7 @@ class TabDialog(QtGui.QDialog):
         regardLabel = QtGui.QLabel("REGARDING:")
         regardingListLW =  QtGui.QListWidget()
         regardingListLW.setMaximumWidth(userColumnWidth)
-        regardingList = DMInfo["regardings"]
+        regardingList = DMInfo.getRegardings()
 
         regardingListLW.insertItems(0, regardingList)
 
@@ -81,7 +181,7 @@ class TabDialog(QtGui.QDialog):
 
         #Grab all the voices
         voiceLabel = QtGui.QLabel("VOICE ORIGIN:")
-        voiceList = DMInfo["voices"]
+        voiceList = DMInfo.getVoices()
         for text in voiceList:
             voices.append(text["name"])
 
@@ -96,7 +196,7 @@ class TabDialog(QtGui.QDialog):
         players = []
 
         #Grab all the Players
-        playerList = DMInfo["players"]
+        playerList = DMInfo.getPlayers()
         for text in playerList:
             players.append(text["character"] + " (" + text['name'] + ")")
 
@@ -206,7 +306,7 @@ class TabDialog(QtGui.QDialog):
 
 
 class statementsQLW(QtGui.QListWidget):
-    def __init__(self, statementType, parent=None):
+    def __init__(self, DMInfo, statementType, parent=None):
         super(statementsQLW, self).__init__(parent)
         self.statementType = statementType
         self.setContextMenuPolicy(QtCore.Qt.CustomContextMenu) #context menu for user data
@@ -215,6 +315,8 @@ class statementsQLW(QtGui.QListWidget):
         self.setDragEnabled(True)
         self.setAcceptDrops(True)
         self.setDragDropMode(QtGui.QAbstractItemView.InternalMove)
+        self.statementList = DMInfo.getCategoryList(statementType)
+        self.addItems() #Call method to populate Tree
 
 
     def userMenu(self, position):
@@ -236,16 +338,15 @@ class statementsQLW(QtGui.QListWidget):
             self.deleteStatement(position)
 
 
-    def addItems(self, statementList):
-        LItems = []
-        for text in statementList:
-            newListItem = QtGui.QListWidgetItem((text["statement"]))
-            newListItem.setFlags(QtCore.Qt.ItemIsSelectable | QtCore.Qt.ItemIsEnabled | QtCore.Qt.ItemIsEditable | QtCore.Qt.ItemIsDragEnabled | QtCore.Qt.ItemIsDropEnabled)
-            self.addItem(newListItem)
+    def addItems(self):
+        print ("Common Statements " + str(self.statementList.getStatements()))
+        for state in self.statementList.getStatements(): 
+            print ("text" + str(state.getLWItem().text()))
+            self.addItem(state.getLWItem())
 
     def populate(self):
         self.clear()
-        self.addItems(DMInfo[self.statementType])
+        self.addItems()
 
     def addStatement(self):
         DMInfo[self.statementType].append({"visible":1, "statement": "Edit this new Statement"})
@@ -273,13 +374,13 @@ class CommonStatementsTab(QtGui.QWidget):
     def __init__(self, parent=None):
         super(CommonStatementsTab, self).__init__(parent)
 
-        statementsListBox = statementsQLW("CommonStatements")
+        statementsListBox = statementsQLW(DMInfo, "CommonStatements")
         statementsListBox.setMinimumWidth(tabColumnWidth)
         statements = []
 
         #Grab all the common Questions
-        commonStatements = DMInfo["CommonStatements"]
-        statementsListBox.addItems(commonStatements)
+        # commonStatements = DMInfo["CommonStatements"]
+        # statementsListBox.addItems(commonStatements)
         layout = QtGui.QVBoxLayout()
         layout.addWidget(statementsListBox)
         self.setLayout(layout)
@@ -293,11 +394,11 @@ class RelativeStatementsTab(QtGui.QWidget):
         statements = []
 
         #Grab all the common Questions
-        commonStatements = DMInfo["RelativeStatements"]
-        for text in commonStatements:
-            statements.append(text["statement"])
+        # commonStatements = DMInfo["RelativeStatements"]
+        # for text in commonStatements:
+        #     statements.append(text["statement"])
 
-        statementsListBox.insertItems(0, statements)
+        # statementsListBox.insertItems(0, statements)
         layout = QtGui.QVBoxLayout()
         layout.addWidget(statementsListBox)
         self.setLayout(layout)
@@ -311,11 +412,11 @@ class QuestionsTab(QtGui.QWidget):
         statements = []
 
         #Grab all the common Questions
-        commonStatements = DMInfo["Questions"]
-        for text in commonStatements:
-            statements.append(text["statement"])
+        # commonStatements = DMInfo["Questions"]
+        # for text in commonStatements:
+        #     statements.append(text["statement"])
 
-        statementsListBox.insertItems(0, statements)
+        # statementsListBox.insertItems(0, statements)
         layout = QtGui.QVBoxLayout()
         layout.addWidget(statementsListBox)
         self.setLayout(layout)
@@ -330,11 +431,11 @@ class QuestSpecificTab(QtGui.QWidget):
         statements = []
 
         #Grab all the common Questions
-        commonStatements = DMInfo["QuestStatements"]
-        for text in commonStatements:
-            statements.append(text["statement"])
+        # commonStatements = DMInfo["QuestStatements"]
+        # for text in commonStatements:
+        #     statements.append(text["statement"])
 
-        statementsListBox.insertItems(0, statements)
+        # statementsListBox.insertItems(0, statements)
         layout = QtGui.QVBoxLayout()
         layout.addWidget(statementsListBox)
         self.setLayout(layout)
