@@ -440,14 +440,8 @@ class StatementsQLW(QtGui.QListWidget):
 class CommonStatementsTab(QtGui.QWidget):
     def __init__(self, parent=None):
         super(CommonStatementsTab, self).__init__(parent)
-
         statementsListBox = StatementsQLW(DMInfo, "CommonStatements")
         statementsListBox.setMinimumWidth(tabColumnWidth)
-        statements = []
-
-        #Grab all the common Questions
-        # commonStatements = DMInfo["CommonStatements"]
-        # statementsListBox.addItems(commonStatements)
         layout = QtGui.QVBoxLayout()
         layout.addWidget(statementsListBox)
         self.setLayout(layout)
@@ -456,16 +450,8 @@ class CommonStatementsTab(QtGui.QWidget):
 class RelativeStatementsTab(QtGui.QWidget):
     def __init__(self, parent=None):
         super(RelativeStatementsTab, self).__init__(parent)
-        statementsListBox = QtGui.QListWidget()
+        statementsListBox = StatementsQLW(DMInfo, "RelativeStatements")
         statementsListBox.setMinimumWidth(tabColumnWidth)
-        statements = []
-
-        #Grab all the common Questions
-        # commonStatements = DMInfo["RelativeStatements"]
-        # for text in commonStatements:
-        #     statements.append(text["statement"])
-
-        # statementsListBox.insertItems(0, statements)
         layout = QtGui.QVBoxLayout()
         layout.addWidget(statementsListBox)
         self.setLayout(layout)
@@ -473,17 +459,8 @@ class RelativeStatementsTab(QtGui.QWidget):
 class QuestionsTab(QtGui.QWidget):
     def __init__(self, parent=None):
         super(QuestionsTab, self).__init__(parent)
-
-        statementsListBox = QtGui.QListWidget()
+        statementsListBox = StatementsQLW(DMInfo, "Questions")
         statementsListBox.setMinimumWidth(tabColumnWidth)
-        statements = []
-
-        #Grab all the common Questions
-        # commonStatements = DMInfo["Questions"]
-        # for text in commonStatements:
-        #     statements.append(text["statement"])
-
-        # statementsListBox.insertItems(0, statements)
         layout = QtGui.QVBoxLayout()
         layout.addWidget(statementsListBox)
         self.setLayout(layout)
@@ -492,17 +469,8 @@ class QuestionsTab(QtGui.QWidget):
 class QuestSpecificTab(QtGui.QWidget):
     def __init__(self, parent=None):
         super(QuestSpecificTab, self).__init__(parent)
-
-        statementsListBox = QtGui.QListWidget()
+        statementsListBox = StatementsQLW(DMInfo, "QuestStatements")
         statementsListBox.setMinimumWidth(tabColumnWidth)
-        statements = []
-
-        #Grab all the common Questions
-        # commonStatements = DMInfo["QuestStatements"]
-        # for text in commonStatements:
-        #     statements.append(text["statement"])
-
-        # statementsListBox.insertItems(0, statements)
         layout = QtGui.QVBoxLayout()
         layout.addWidget(statementsListBox)
         self.setLayout(layout)
