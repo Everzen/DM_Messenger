@@ -58,9 +58,9 @@ def saveJson():
 ##############################DEFINE CLASSES TO HANDLE JSON############################
 
 class Statement(object):
-    def __init__(self, statementJson):
-        self.rawJson = statementJson
-        self.lwItem = self.setLWItem()
+    def __init__(self):
+        self.rawJson = None
+        self.lwItem = None
     
     def getLWItem(self):
         return self.lwItem
@@ -70,15 +70,23 @@ class Statement(object):
         # print("My statemment is : " + str(self.rawJson["statement"]))
         newItem = QtGui.QListWidgetItem((self.rawJson["statement"]))
         newItem.setFlags(QtCore.Qt.ItemIsSelectable | QtCore.Qt.ItemIsEnabled | QtCore.Qt.ItemIsEditable | QtCore.Qt.ItemIsDragEnabled | QtCore.Qt.ItemIsDropEnabled)
+        self.lwItem = newItem
         return newItem
-        
-    def set(statementText):
-        self.rawJson["statement"] = statementText
-        self.lwItem.setText(statementText)
+
+    def set(self, statementJson):
+        self.rawJson = statementJson
+        self.setLWItem()
 
     def get(self):
         return self.rawJson
 
+    def create(self):
+        self.rawJson = {"visible": 1, "statement": "Edit this statement"}
+        self.setLWItem()
+
+    def setStatementText(self, text):
+        self.rawJson["statement"] = text
+        self.setLWItem()
 
 class StatementList(object):
     def __init__(self, categoryJson):
@@ -89,13 +97,36 @@ class StatementList(object):
         # print ("Category JSon : " + str(self.rawJson))
         newList = []
         for statementJson in self.rawJson:
-            newStatement = Statement(statementJson)
+            newStatement = Statement()
+            newStatement.set(statementJson)
             newList.append(newStatement)
         return newList
 
     def getStatements(self):
         return self.statements
 
+    def setStatements(self, statementList):
+        self.statements = statementList 
+        self.getJson() #Call to update the Json
+
+    def getJson(self):
+        newJson = []
+        for stateItem in self.statements: newJson.append(stateItem.get())
+        self.rawJson = newJson
+        return self.rawJson
+
+    def add(self):
+        newStatement = Statement()
+        newStatement.create() #Create a new addition
+        self.statements.append(newStatement)
+
+    def remove(self, index):
+        del(self.statements[index])
+
+    def populate(self):
+        """This method rebuilds the treeWidgetList Items for the statement list since they get deleted by the LW.clear()"""
+        for state in self.statements:
+            state.setLWItem()
 
 
 class DMInformation(object):
@@ -128,8 +159,14 @@ class DMInformation(object):
         # print("New Statement Dictionaries " + str(newStatementDic))
         return newStatementDic
 
-    def getCategoryList(self, category):
+    def getCategoryDict(self, category):
         return self.categoryDicts[category] 
+
+    def setCategoryDict(self, category, statementList):
+        self.categoryDicts[category] = statementList  #set the statement List
+        self.rawJson[category] = statementList.getJson() # Update the main Json
+        print "The new JSon is : " + str(statementList.getJson())
+        self.save() #Automatically save the Json
 
     def getRegardings(self):
         return self.rawJson["regardings"]
@@ -139,6 +176,9 @@ class DMInformation(object):
 
     def getPlayers(self):
         return self.rawJson["players"]
+
+
+
 
 DMInfo = DMInformation(jsonFile, statementCategories)
 
@@ -305,9 +345,9 @@ class TabDialog(QtGui.QDialog):
 
 
 
-class statementsQLW(QtGui.QListWidget):
+class StatementsQLW(QtGui.QListWidget):
     def __init__(self, DMInfo, statementType, parent=None):
-        super(statementsQLW, self).__init__(parent)
+        super(StatementsQLW, self).__init__(parent)
         self.statementType = statementType
         self.setContextMenuPolicy(QtCore.Qt.CustomContextMenu) #context menu for user data
         self.customContextMenuRequested.connect(self.userMenu)
@@ -315,7 +355,7 @@ class statementsQLW(QtGui.QListWidget):
         self.setDragEnabled(True)
         self.setAcceptDrops(True)
         self.setDragDropMode(QtGui.QAbstractItemView.InternalMove)
-        self.statementList = DMInfo.getCategoryList(statementType)
+        self.statementList = DMInfo.getCategoryDict(statementType)
         self.addItems() #Call method to populate Tree
 
 
@@ -346,11 +386,12 @@ class statementsQLW(QtGui.QListWidget):
 
     def populate(self):
         self.clear()
+        self.statementList.populate()
         self.addItems()
 
     def addStatement(self):
-        DMInfo[self.statementType].append({"visible":1, "statement": "Edit this new Statement"})
-        saveJson() #Save the new Json File
+        self.statementList.add() #Add a new Item to the statementList
+        DMInfo.setCategoryDict(self.statementType, self.statementList)
         self.populate()
 
     def deleteStatement(self, position):
@@ -360,21 +401,47 @@ class statementsQLW(QtGui.QListWidget):
                     "Are you sure to delete the statement " "\"" + delItem.text() + "\"?", QtGui.QMessageBox.Yes | 
                     QtGui.QMessageBox.No, QtGui.QMessageBox.Yes)
         if reply == QtGui.QMessageBox.Yes:
-            del(DMInfo[self.statementType][rowIndex])
-            saveJson() #Save the new Json File
+            self.statementList.remove(rowIndex)
+            DMInfo.setCategoryDict(self.statementType, self.statementList)
             self.populate()
 
     def editStatement(self):
         newText = self.currentItem().text()  #Grab the text from the ListWidget that has just had the text edited
-        DMInfo[self.statementType][self.currentRow()]["statement"] = newText  #Change the associated part of the json
-        saveJson()
+        newStatementList = self.statementList.getStatements()
+        print("New Statement List : " + str(newStatementList) )
+        newStatementList[self.currentRow()].setStatementText(newText)
+        self.statementList.setStatements(newStatementList)
+        DMInfo.setCategoryDict(self.statementType, self.statementList)
+        self.populate()
+
+    def reOrderStatementLists(self):
+        newStatementList = []
+
+        lWItems = []
+        for index in xrange(self.count()):
+             lWItems.append(self.item(index))
+        for lw in lWItems:
+            for state in self.statementList.getStatements():
+                if lw is state.getLWItem():
+                    newStatementList.append(state)
+        self.statementList.setStatements(newStatementList)
+        DMInfo.setCategoryDict(self.statementType, self.statementList)
+        self.populate()
+
+
+    def dropEvent(self, event):
+        print("Drop Event Occured")
+        super(StatementsQLW,self).dropEvent(event)
+        #When the drop has finished then we need to look through the new ListWidgetItems and aligh out List
+        self.reOrderStatementLists()
+
 
 
 class CommonStatementsTab(QtGui.QWidget):
     def __init__(self, parent=None):
         super(CommonStatementsTab, self).__init__(parent)
 
-        statementsListBox = statementsQLW(DMInfo, "CommonStatements")
+        statementsListBox = StatementsQLW(DMInfo, "CommonStatements")
         statementsListBox.setMinimumWidth(tabColumnWidth)
         statements = []
 
