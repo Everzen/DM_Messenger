@@ -165,7 +165,7 @@ class DMInformation(object):
     def setCategoryDict(self, category, statementList):
         self.categoryDicts[category] = statementList  #set the statement List
         self.rawJson[category] = statementList.getJson() # Update the main Json
-        print "The new JSon is : " + str(statementList.getJson())
+        # print "The new JSon is : " + str(statementList.getJson())
         self.save() #Automatically save the Json
 
     def getRegardings(self):
@@ -381,7 +381,7 @@ class StatementsQLW(QtGui.QListWidget):
     def addItems(self):
         print ("Common Statements " + str(self.statementList.getStatements()))
         for state in self.statementList.getStatements(): 
-            print ("text" + str(state.getLWItem().text()))
+            # print ("text" + str(state.getLWItem().text()))
             self.addItem(state.getLWItem())
 
     def populate(self):
@@ -408,7 +408,7 @@ class StatementsQLW(QtGui.QListWidget):
     def editStatement(self):
         newText = self.currentItem().text()  #Grab the text from the ListWidget that has just had the text edited
         newStatementList = self.statementList.getStatements()
-        print("New Statement List : " + str(newStatementList) )
+        # print("New Statement List : " + str(newStatementList) )
         newStatementList[self.currentRow()].setStatementText(newText)
         self.statementList.setStatements(newStatementList)
         DMInfo.setCategoryDict(self.statementType, self.statementList)
@@ -430,7 +430,6 @@ class StatementsQLW(QtGui.QListWidget):
 
 
     def dropEvent(self, event):
-        print("Drop Event Occured")
         super(StatementsQLW,self).dropEvent(event)
         #When the drop has finished then we need to look through the new ListWidgetItems and aligh out List
         self.reOrderStatementLists()
