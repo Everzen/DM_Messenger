@@ -206,11 +206,17 @@ class TabDialog(QtGui.QDialog):
 
 
 class statementsQLW(QtGui.QListWidget):
-    def __init__(self, parent=None):
+    def __init__(self, statementType, parent=None):
         super(statementsQLW, self).__init__(parent)
+        self.statementType = statementType
         self.setContextMenuPolicy(QtCore.Qt.CustomContextMenu) #context menu for user data
         self.customContextMenuRequested.connect(self.userMenu)
-    
+        self.itemChanged.connect(self.editStatement)  #This is called when the enter key is pressed on the changing of the edited text
+        self.setDragEnabled(True)
+        self.setAcceptDrops(True)
+        self.setDragDropMode(QtGui.QAbstractItemView.InternalMove)
+
+
     def userMenu(self, position):
         menu = QtGui.QMenu()
         addStatement = "Nothing"
@@ -234,17 +240,15 @@ class statementsQLW(QtGui.QListWidget):
         LItems = []
         for text in statementList:
             newListItem = QtGui.QListWidgetItem((text["statement"]))
-            newListItem.setFlags(QtCore.Qt.ItemIsSelectable | QtCore.Qt.ItemIsEnabled | QtCore.Qt.ItemIsEditable)
+            newListItem.setFlags(QtCore.Qt.ItemIsSelectable | QtCore.Qt.ItemIsEnabled | QtCore.Qt.ItemIsEditable | QtCore.Qt.ItemIsDragEnabled | QtCore.Qt.ItemIsDropEnabled)
             self.addItem(newListItem)
-
 
     def populate(self):
         self.clear()
-        self.addItems(DMInfo["CommonStatements"])
-
+        self.addItems(DMInfo[self.statementType])
 
     def addStatement(self):
-        DMInfo["CommonStatements"].append({"visible":1, "statement": "Edit this new Statement"})
+        DMInfo[self.statementType].append({"visible":1, "statement": "Edit this new Statement"})
         saveJson() #Save the new Json File
         self.populate()
 
@@ -253,18 +257,23 @@ class statementsQLW(QtGui.QListWidget):
         rowIndex = self.row(delItem)
         reply = QtGui.QMessageBox.question(self, 'Confirmation',
                     "Are you sure to delete the statement " "\"" + delItem.text() + "\"?", QtGui.QMessageBox.Yes | 
-                    QtGui.QMessageBox.No, QtGui.QMessageBox.No)
+                    QtGui.QMessageBox.No, QtGui.QMessageBox.Yes)
         if reply == QtGui.QMessageBox.Yes:
-            del(DMInfo["CommonStatements"][rowIndex])
+            del(DMInfo[self.statementType][rowIndex])
             saveJson() #Save the new Json File
             self.populate()
+
+    def editStatement(self):
+        newText = self.currentItem().text()  #Grab the text from the ListWidget that has just had the text edited
+        DMInfo[self.statementType][self.currentRow()]["statement"] = newText  #Change the associated part of the json
+        saveJson()
 
 
 class CommonStatementsTab(QtGui.QWidget):
     def __init__(self, parent=None):
         super(CommonStatementsTab, self).__init__(parent)
 
-        statementsListBox = statementsQLW()
+        statementsListBox = statementsQLW("CommonStatements")
         statementsListBox.setMinimumWidth(tabColumnWidth)
         statements = []
 
@@ -279,7 +288,6 @@ class CommonStatementsTab(QtGui.QWidget):
 class RelativeStatementsTab(QtGui.QWidget):
     def __init__(self, parent=None):
         super(RelativeStatementsTab, self).__init__(parent)
-
         statementsListBox = QtGui.QListWidget()
         statementsListBox.setMinimumWidth(tabColumnWidth)
         statements = []
