@@ -1,5 +1,6 @@
 from PySide import QtCore, QtGui
 import sys
+import copy
 import qdarkstyle
 import json
 from slackclient import SlackClient
@@ -12,7 +13,7 @@ jsonFile = 'resources\MessengerData_SVFX.json'
 # jsonFile = 'resources\MessengerData_DnKnee.json'
 # jsonFile = 'resources\MessengerData_Illumria.json'
 
-statementCategories = {"CommonStatements" : "Common Statements", "RelativeStatements" : "Relative Statements", "Questions" : "Questions", "QuestStatements": "Quest Specific"}
+statementCategories = {"CommonStatements" : "Common Statements", "RelativeStatements" : "Relative Statements", "Questions" : "Questions", "QuestStatements": "Quest Specific", "voices" : "Voices", "regardings": "Regardings" }
 # print ("Keys " + str(statementCategories.keys()))
 
 tabColumnWidth = 405
@@ -48,14 +49,73 @@ with open(jsonFile) as json_file:
 # print(str(DMInfo))
 
 
-def saveJson():
-    with open(jsonFile, 'w') as json_file:
-        json.dump(DMInfo, json_file)
+# def saveJson():
+#     with open(jsonFile, 'w') as json_file:
+#         json.dump(DMInfo, json_file)
 
 
 
 
 ##############################DEFINE CLASSES TO HANDLE JSON############################
+class Voice(object):
+    def __init__(self):
+        self.rawJson = None
+        self.lwItem = None
+    
+    def getLWItem(self):
+        return self.lwItem
+
+    def setLWItem(self):
+        newItem = QtGui.QListWidgetItem((self.rawJson["name"]))
+        newItem.setFlags(QtCore.Qt.ItemIsSelectable | QtCore.Qt.ItemIsEnabled | QtCore.Qt.ItemIsEditable | QtCore.Qt.ItemIsDragEnabled | QtCore.Qt.ItemIsDropEnabled)
+        self.lwItem = newItem
+        return newItem
+
+    def set(self, statementJson):
+        self.rawJson = statementJson
+        self.setLWItem()
+
+    def get(self):
+        return self.rawJson
+
+    def create(self):
+        self.rawJson = {"asUser": 0, "name": "New Voice", "fade":0}
+        self.setLWItem()
+
+    def setStatementText(self, text):
+        self.rawJson["name"] = text
+        self.setLWItem()
+
+
+class Regarding(object):
+    def __init__(self):
+        self.rawJson = None
+        self.lwItem = None
+    
+    def getLWItem(self):
+        return self.lwItem
+
+    def setLWItem(self):
+        newItem = QtGui.QListWidgetItem((self.rawJson["name"]))
+        newItem.setFlags(QtCore.Qt.ItemIsSelectable | QtCore.Qt.ItemIsEnabled | QtCore.Qt.ItemIsEditable | QtCore.Qt.ItemIsDragEnabled | QtCore.Qt.ItemIsDropEnabled)
+        self.lwItem = newItem
+        return newItem
+
+    def set(self, statementJson):
+        self.rawJson = statementJson
+        self.setLWItem()
+
+    def get(self):
+        return self.rawJson
+
+    def create(self):
+        self.rawJson = {"fade": 0, "name": "New Character", "fade":0}
+        self.setLWItem()
+
+    def setStatementText(self, text):
+        self.rawJson["name"] = text
+        self.setLWItem()
+
 
 class Statement(object):
     def __init__(self):
@@ -81,23 +141,26 @@ class Statement(object):
         return self.rawJson
 
     def create(self):
-        self.rawJson = {"visible": 1, "statement": "Edit this statement"}
+        self.rawJson = {"visible": 1, "statement": "Edit this statement", "fade":0}
         self.setLWItem()
 
     def setStatementText(self, text):
         self.rawJson["statement"] = text
         self.setLWItem()
 
+
 class StatementList(object):
-    def __init__(self, categoryJson):
+    def __init__(self, statementObj, categoryJson):
         self.rawJson = categoryJson
+        self.statementObj = statementObj
         self.statements = self.collectStatements()
+
 
     def collectStatements(self):
         # print ("Category JSon : " + str(self.rawJson))
         newList = []
         for statementJson in self.rawJson:
-            newStatement = Statement()
+            newStatement = self.statementObj()
             newStatement.set(statementJson)
             newList.append(newStatement)
         return newList
@@ -116,7 +179,7 @@ class StatementList(object):
         return self.rawJson
 
     def add(self):
-        newStatement = Statement()
+        newStatement = self.statementObj()
         newStatement.create() #Create a new addition
         self.statements.append(newStatement)
 
@@ -153,10 +216,16 @@ class DMInformation(object):
 
     def collectStatementLists(self):
         newStatementDic = {}
+        list = None
         for cat in self.categoryTitles:
-            list = StatementList(self.rawJson[cat])
+            if cat == "voices": list = StatementList(Voice, self.rawJson[cat])
+            elif cat == "regardings": list = StatementList(Regarding, self.rawJson[cat])
+            else: list = StatementList(Statement, self.rawJson[cat])
             newStatementDic.update({cat : list})
-        # print("New Statement Dictionaries " + str(newStatementDic))
+        print("New Statement Dictionaries " + str(newStatementDic["voices"].getStatements()))
+        print("New Statement Dictionaries " + str(newStatementDic["regardings"].getStatements()))
+        print(str(newStatementDic["regardings"].getStatements()[0].get()["name"]))
+        print(str(newStatementDic["voices"].getStatements()[0].get()["name"]))
         return newStatementDic
 
     def getCategoryDict(self, category):
@@ -186,6 +255,103 @@ slack_client = SlackClient(DMInfo.getSecurity())
 
 
 
+class StatementsQLW(QtGui.QListWidget):
+    def __init__(self, DMInfo, statementType, parent=None):
+        super(StatementsQLW, self).__init__(parent)
+        self.statementType = statementType
+        self.setContextMenuPolicy(QtCore.Qt.CustomContextMenu) #context menu for user data
+        self.customContextMenuRequested.connect(self.userMenu)
+        self.itemChanged.connect(self.editStatement)  #This is called when the enter key is pressed on the changing of the edited text
+        self.setDragEnabled(True)
+        self.setAcceptDrops(True)
+        self.setDragDropMode(QtGui.QAbstractItemView.InternalMove)
+        self.statementList = DMInfo.getCategoryDict(statementType)
+        self.addItems() #Call method to populate Tree
+
+    def getStatementList(self):
+        return self.statementList
+
+    def userMenu(self, position):
+        menu = QtGui.QMenu()
+        addStatement = "Nothing"
+        editStatement = "Nothing"
+        delStatement = "Nothing"
+
+        option = "Statement"
+        if self.statementType == "voices": option = "Voice"
+        elif self.statementType == "regardings": option = "Character"
+        if not (self.itemAt(position)): #Test right Click Position - have we hit an item
+            addStatement = menu.addAction(self.tr("Add New " + option)) 
+        else:
+            #Check that we are not trying to delete the DM!
+            if not (self.statementType == "voices" and self.itemAt(position).text() == "DM"):
+                delStatement = menu.addAction(self.tr("Delete " + option))
+        action = menu.exec_(self.viewport().mapToGlobal(position))
+        if action == addStatement:
+            # print ("Adding Statement")
+            self.addStatement()
+        elif action == delStatement:
+            # print("Deleting Statement")
+            self.deleteStatement(position)
+
+
+    def addItems(self):
+        # print ("Common Statements " + str(self.statementList.getStatements()))
+        for state in self.statementList.getStatements(): 
+            # print ("text" + str(state.getLWItem().text()))
+            self.addItem(state.getLWItem())
+
+    def populate(self):
+        self.clear()
+        self.statementList.populate()
+        self.addItems()
+
+    def addStatement(self):
+        self.statementList.add() #Add a new Item to the statementList
+        DMInfo.setCategoryDict(self.statementType, self.statementList)
+        self.populate()
+
+    def deleteStatement(self, position):
+        delItem = self.itemAt(position)
+        rowIndex = self.row(delItem)
+        reply = QtGui.QMessageBox.question(self, 'Confirmation',
+                    "Are you sure to delete the statement " "\"" + delItem.text() + "\"?", QtGui.QMessageBox.Yes | 
+                    QtGui.QMessageBox.No, QtGui.QMessageBox.Yes)
+        if reply == QtGui.QMessageBox.Yes:
+            self.statementList.remove(rowIndex)
+            DMInfo.setCategoryDict(self.statementType, self.statementList)
+            self.populate()
+
+    def editStatement(self):
+        newText = self.currentItem().text()  #Grab the text from the ListWidget that has just had the text edited
+        newStatementList = self.statementList.getStatements()
+        # print("New Statement List : " + str(newStatementList) )
+        newStatementList[self.currentRow()].setStatementText(newText)
+        self.statementList.setStatements(newStatementList)
+        DMInfo.setCategoryDict(self.statementType, self.statementList)
+        self.populate()
+
+    def reOrderStatementLists(self):
+        newStatementList = []
+
+        lWItems = []
+        for index in xrange(self.count()):
+             lWItems.append(self.item(index))
+        for lw in lWItems:
+            for state in self.statementList.getStatements():
+                if lw is state.getLWItem():
+                    newStatementList.append(state)
+        self.statementList.setStatements(newStatementList)
+        DMInfo.setCategoryDict(self.statementType, self.statementList)
+        self.populate()
+
+
+    def dropEvent(self, event):
+        super(StatementsQLW,self).dropEvent(event)
+        #When the drop has finished then we need to look through the new ListWidgetItems and aligh out List
+        self.reOrderStatementLists()
+
+
 
 
 class TabDialog(QtGui.QDialog):
@@ -208,26 +374,20 @@ class TabDialog(QtGui.QDialog):
         
         #Setup regarding List - This is going to dictate who the message is about
         regardLabel = QtGui.QLabel("REGARDING:")
-        regardingListLW =  QtGui.QListWidget()
+        regardingListLW =  StatementsQLW(DMInfo, "regardings")
         regardingListLW.setMaximumWidth(userColumnWidth)
-        regardingList = DMInfo.getRegardings()
-
-        regardingListLW.insertItems(0, regardingList)
 
         #set up Message From List
-        voiceListLW =  QtGui.QListWidget()
+        voiceListLW =  StatementsQLW(DMInfo, "voices")
         voiceListLW.setMaximumWidth(userColumnWidth)
         voices =[]
 
         #Grab all the voices
         voiceLabel = QtGui.QLabel("VOICE ORIGIN:")
-        voiceList = DMInfo.getVoices()
-        for text in voiceList:
-            voices.append(text["name"])
-
-        voiceListLW.insertItems(0, voices)  
         voiceListLW.setCurrentRow(0)
-        voiceListLW.setMaximumHeight(19*len(voices))
+        # voiceListLW.setMaximumHeight(19*len(DMInfo.getCategoryDict("voices").getStatements()))
+        voiceListLW.setMaximumHeight(19*4)
+
 
         #Setup player List
         playerLabel = QtGui.QLabel("SEND TO PLAYER:")
@@ -309,8 +469,8 @@ class TabDialog(QtGui.QDialog):
         	# print "Statement: " + str(findActiveStatement)
         	# print "My final Statement is: " + str(finalStatement)
         	if (len(finalPlayers) != 0) and finalStatement: #If all if these conditions are met then we should be able to send the message
-        		voicename = voiceList[finalVoice]["name"]
-        		asUser = int(voiceList[finalVoice]["asUser"])
+        		voicename = voiceListLW.getStatementList().getStatements()[finalVoice].get()["name"]  #Grabbing the RawJson
+        		asUser = int(voiceListLW.getStatementList().getStatements()[finalVoice].get()["asUser"]) #Grabbing the Raw Json
         		print "Message: " + finalStatement
         		for playerNum in finalPlayers:
         			playerID = playerList[playerNum]["slackID"]
@@ -344,95 +504,6 @@ class TabDialog(QtGui.QDialog):
         self.setWindowTitle("Dungeon Master - Fast Messenger")
 
 
-
-class StatementsQLW(QtGui.QListWidget):
-    def __init__(self, DMInfo, statementType, parent=None):
-        super(StatementsQLW, self).__init__(parent)
-        self.statementType = statementType
-        self.setContextMenuPolicy(QtCore.Qt.CustomContextMenu) #context menu for user data
-        self.customContextMenuRequested.connect(self.userMenu)
-        self.itemChanged.connect(self.editStatement)  #This is called when the enter key is pressed on the changing of the edited text
-        self.setDragEnabled(True)
-        self.setAcceptDrops(True)
-        self.setDragDropMode(QtGui.QAbstractItemView.InternalMove)
-        self.statementList = DMInfo.getCategoryDict(statementType)
-        self.addItems() #Call method to populate Tree
-
-
-    def userMenu(self, position):
-        menu = QtGui.QMenu()
-        addStatement = "Nothing"
-        editStatement = "Nothing"
-        delStatement = "Nothing"
-        if not (self.itemAt(position)): #Test right Click Position - have we hit an item
-            addStatement = menu.addAction(self.tr("Add New Statement"))
-        else: 
-            # editStatement = menu.addAction(self.tr("Edit Statement"))
-            delStatement = menu.addAction(self.tr("Delete Statement"))
-        action = menu.exec_(self.viewport().mapToGlobal(position))
-        if action == addStatement:
-            # print ("Adding Statement")
-            self.addStatement()
-        elif action == delStatement:
-            # print("Deleting Statement")
-            self.deleteStatement(position)
-
-
-    def addItems(self):
-        print ("Common Statements " + str(self.statementList.getStatements()))
-        for state in self.statementList.getStatements(): 
-            # print ("text" + str(state.getLWItem().text()))
-            self.addItem(state.getLWItem())
-
-    def populate(self):
-        self.clear()
-        self.statementList.populate()
-        self.addItems()
-
-    def addStatement(self):
-        self.statementList.add() #Add a new Item to the statementList
-        DMInfo.setCategoryDict(self.statementType, self.statementList)
-        self.populate()
-
-    def deleteStatement(self, position):
-        delItem = self.itemAt(position)
-        rowIndex = self.row(delItem)
-        reply = QtGui.QMessageBox.question(self, 'Confirmation',
-                    "Are you sure to delete the statement " "\"" + delItem.text() + "\"?", QtGui.QMessageBox.Yes | 
-                    QtGui.QMessageBox.No, QtGui.QMessageBox.Yes)
-        if reply == QtGui.QMessageBox.Yes:
-            self.statementList.remove(rowIndex)
-            DMInfo.setCategoryDict(self.statementType, self.statementList)
-            self.populate()
-
-    def editStatement(self):
-        newText = self.currentItem().text()  #Grab the text from the ListWidget that has just had the text edited
-        newStatementList = self.statementList.getStatements()
-        # print("New Statement List : " + str(newStatementList) )
-        newStatementList[self.currentRow()].setStatementText(newText)
-        self.statementList.setStatements(newStatementList)
-        DMInfo.setCategoryDict(self.statementType, self.statementList)
-        self.populate()
-
-    def reOrderStatementLists(self):
-        newStatementList = []
-
-        lWItems = []
-        for index in xrange(self.count()):
-             lWItems.append(self.item(index))
-        for lw in lWItems:
-            for state in self.statementList.getStatements():
-                if lw is state.getLWItem():
-                    newStatementList.append(state)
-        self.statementList.setStatements(newStatementList)
-        DMInfo.setCategoryDict(self.statementType, self.statementList)
-        self.populate()
-
-
-    def dropEvent(self, event):
-        super(StatementsQLW,self).dropEvent(event)
-        #When the drop has finished then we need to look through the new ListWidgetItems and aligh out List
-        self.reOrderStatementLists()
 
 
 
