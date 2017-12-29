@@ -29,10 +29,10 @@ def grabInfo(infoType):
 #     json.dump(data, fp)
 
 
-DMInfo = None
+# DMInfo = None
 
-with open(jsonFile) as json_file:
-    DMInfo = json.load(json_file)
+# with open(jsonFile) as json_file:
+#     DMInfo = json.load(json_file)
 
 
 ##Grab the securtiy information from the Json file....
@@ -57,70 +57,72 @@ with open(jsonFile) as json_file:
 
 
 ##############################DEFINE CLASSES TO HANDLE JSON############################
-class Voice(object):
-    def __init__(self):
-        self.rawJson = None
-        self.lwItem = None
+# class Voice(object):
+#     def __init__(self):
+#         self.rawJson = None
+#         self.lwItem = None
     
-    def getLWItem(self):
-        return self.lwItem
+#     def getLWItem(self):
+#         return self.lwItem
 
-    def setLWItem(self):
-        newItem = QtGui.QListWidgetItem((self.rawJson["name"]))
-        newItem.setFlags(QtCore.Qt.ItemIsSelectable | QtCore.Qt.ItemIsEnabled | QtCore.Qt.ItemIsEditable | QtCore.Qt.ItemIsDragEnabled | QtCore.Qt.ItemIsDropEnabled)
-        self.lwItem = newItem
-        return newItem
+#     def setLWItem(self):
+#         newItem = QtGui.QListWidgetItem((self.rawJson["name"]))
+#         newItem.setFlags(QtCore.Qt.ItemIsSelectable | QtCore.Qt.ItemIsEnabled | QtCore.Qt.ItemIsEditable | QtCore.Qt.ItemIsDragEnabled | QtCore.Qt.ItemIsDropEnabled)
+#         self.lwItem = newItem
+#         return newItem
 
-    def set(self, statementJson):
-        self.rawJson = statementJson
-        self.setLWItem()
+#     def set(self, statementJson):
+#         self.rawJson = statementJson
+#         self.setLWItem()
 
-    def get(self):
-        return self.rawJson
+#     def get(self):
+#         return self.rawJson
 
-    def create(self):
-        self.rawJson = {"asUser": 0, "name": "New Voice", "fade":0}
-        self.setLWItem()
+#     def create(self):
+#         self.rawJson = {"asUser": 0, "name": "New Voice", "fade":0, "highLight":0}
+#         self.setLWItem()
 
-    def setStatementText(self, text):
-        self.rawJson["name"] = text
-        self.setLWItem()
+#     def setStatementText(self, text):
+#         self.rawJson["name"] = text
+#         self.setLWItem()
 
 
-class Regarding(object):
-    def __init__(self):
-        self.rawJson = None
-        self.lwItem = None
+# class Regarding(object):
+#     def __init__(self, colours):
+#         self.rawJson = None
+#         self.lwItem = None
+#         self.colours = colours
     
-    def getLWItem(self):
-        return self.lwItem
+#     def getLWItem(self):
+#         return self.lwItem
 
-    def setLWItem(self):
-        newItem = QtGui.QListWidgetItem((self.rawJson["name"]))
-        newItem.setFlags(QtCore.Qt.ItemIsSelectable | QtCore.Qt.ItemIsEnabled | QtCore.Qt.ItemIsEditable | QtCore.Qt.ItemIsDragEnabled | QtCore.Qt.ItemIsDropEnabled)
-        self.lwItem = newItem
-        return newItem
+#     def setLWItem(self):
+#         newItem = QtGui.QListWidgetItem((self.rawJson["name"]))
+#         newItem.setFlags(QtCore.Qt.ItemIsSelectable | QtCore.Qt.ItemIsEnabled | QtCore.Qt.ItemIsEditable | QtCore.Qt.ItemIsDragEnabled | QtCore.Qt.ItemIsDropEnabled)
+#         self.lwItem = newItem
+#         return newItem
 
-    def set(self, statementJson):
-        self.rawJson = statementJson
-        self.setLWItem()
+#     def set(self, statementJson):
+#         self.rawJson = statementJson
+#         self.setLWItem()
 
-    def get(self):
-        return self.rawJson
+#     def get(self):
+#         return self.rawJson
 
-    def create(self):
-        self.rawJson = {"fade": 0, "name": "New Character", "fade":0}
-        self.setLWItem()
+#     def create(self):
+#         self.rawJson = {"fade": 0, "name": "New Character", "fade":0, "highLight":0}
+#         self.setLWItem()
 
-    def setStatementText(self, text):
-        self.rawJson["name"] = text
-        self.setLWItem()
+#     def setStatementText(self, text):
+#         self.rawJson["name"] = text
+#         self.setLWItem()
 
 
 class Statement(object):
-    def __init__(self):
+    def __init__(self, colours):
         self.rawJson = None
         self.lwItem = None
+        self.colours = colours
     
     def getLWItem(self):
         return self.lwItem
@@ -128,7 +130,15 @@ class Statement(object):
     def setLWItem(self):
         # print ("My Raw JSon is : " + str(self.rawJson))
         # print("My statemment is : " + str(self.rawJson["statement"]))
+        newItemColour = self.colours["text"]
+        if self.rawJson["fade"]:
+            newItemColour = self.colours["fade"]
+        else: #Statement is not faded. 
+            if self.rawJson["highLight"]:
+                newItemColour = self.colours["highLight"]
+
         newItem = QtGui.QListWidgetItem((self.rawJson["statement"]))
+        newItem.setForeground(QtGui.QBrush(QtGui.QBrush(QtGui.QColor(newItemColour))))
         newItem.setFlags(QtCore.Qt.ItemIsSelectable | QtCore.Qt.ItemIsEnabled | QtCore.Qt.ItemIsEditable | QtCore.Qt.ItemIsDragEnabled | QtCore.Qt.ItemIsDropEnabled)
         self.lwItem = newItem
         return newItem
@@ -141,7 +151,7 @@ class Statement(object):
         return self.rawJson
 
     def create(self):
-        self.rawJson = {"visible": 1, "statement": "Edit this statement", "fade":0}
+        self.rawJson = {"visible": 1, "statement": "Edit this statement", "fade":0, "highLight":0}
         self.setLWItem()
 
     def setStatementText(self, text):
@@ -149,10 +159,51 @@ class Statement(object):
         self.setLWItem()
 
 
+class Voice(Statement):
+    def __init__(self, colours):
+        super(Statement, self).__init__()
+        self.colours = colours
+
+    def setLWItem(self):
+        # print ("My Raw JSon is : " + str(self.rawJson))
+        # print("My statemment is : " + str(self.rawJson["statement"]))
+        newItemColour = self.colours["text"]
+        if self.rawJson["fade"]:
+            newItemColour = self.colours["fade"]
+        else: #Statement is not faded. 
+            if self.rawJson["highLight"]:
+                newItemColour = self.colours["highLight"]
+
+        newItem = QtGui.QListWidgetItem((self.rawJson["name"]))
+        newItem.setForeground(QtGui.QBrush(QtGui.QBrush(QtGui.QColor(newItemColour))))
+        newItem.setFlags(QtCore.Qt.ItemIsSelectable | QtCore.Qt.ItemIsEnabled | QtCore.Qt.ItemIsEditable | QtCore.Qt.ItemIsDragEnabled | QtCore.Qt.ItemIsDropEnabled)
+        self.lwItem = newItem
+        return newItem
+
+    def create(self):
+        self.rawJson = {"asUser": 0, "name": "New Voice", "fade":0, "highLight":0}
+        self.setLWItem()
+
+    def setStatementText(self, text):
+        self.rawJson["name"] = text
+        self.setLWItem()
+
+
+class Regarding(Voice):
+    def __init__(self, colours):
+        super(Voice, self).__init__(colours)
+
+    def create(self):
+        self.rawJson = {"fade": 0, "name": "New Character", "fade":0, "highLight":0}
+        self.setLWItem()
+
+
+
 class StatementList(object):
-    def __init__(self, statementObj, categoryJson):
+    def __init__(self, statementObj, categoryJson, colours):
         self.rawJson = categoryJson
         self.statementObj = statementObj
+        self.colours = colours
         self.statements = self.collectStatements()
 
 
@@ -160,7 +211,7 @@ class StatementList(object):
         # print ("Category JSon : " + str(self.rawJson))
         newList = []
         for statementJson in self.rawJson:
-            newStatement = self.statementObj()
+            newStatement = self.statementObj(self.colours)
             newStatement.set(statementJson)
             newList.append(newStatement)
         return newList
@@ -179,7 +230,7 @@ class StatementList(object):
         return self.rawJson
 
     def add(self):
-        newStatement = self.statementObj()
+        newStatement = self.statementObj(self.colours)
         newStatement.create() #Create a new addition
         self.statements.append(newStatement)
 
@@ -198,7 +249,9 @@ class DMInformation(object):
         self.rawJson = self.loadJson()
         self.statementCategories = statementCategories
         self.categoryTitles = categories.keys()
+        self.colours = self.getColours()
         self.categoryDicts = self.collectStatementLists()
+        
 
     def loadJson(self):
         with open(self.fileName) as json_file:
@@ -218,9 +271,9 @@ class DMInformation(object):
         newStatementDic = {}
         list = None
         for cat in self.categoryTitles:
-            if cat == "voices": list = StatementList(Voice, self.rawJson[cat])
-            elif cat == "regardings": list = StatementList(Regarding, self.rawJson[cat])
-            else: list = StatementList(Statement, self.rawJson[cat])
+            if cat == "voices": list = StatementList(Voice, self.rawJson[cat], self.colours)
+            elif cat == "regardings": list = StatementList(Regarding, self.rawJson[cat], self.colours)
+            else: list = StatementList(Statement, self.rawJson[cat], self.colours)
             newStatementDic.update({cat : list})
         print("New Statement Dictionaries " + str(newStatementDic["voices"].getStatements()))
         print("New Statement Dictionaries " + str(newStatementDic["regardings"].getStatements()))
@@ -246,8 +299,15 @@ class DMInformation(object):
     def getPlayers(self):
         return self.rawJson["players"]
 
-
-
+    def getColours(self):
+        textColour = self.rawJson["colours"]["text"]
+        qTextColour = QtGui.QColor(textColour[0], textColour[1], textColour[2])
+        fadeColour = self.rawJson["colours"]["fade"]
+        qFadeColour = QtGui.QColor(fadeColour[0], fadeColour[1], fadeColour[2])
+        highLightColour = self.rawJson["colours"]["highLight"]
+        qHighLightColour = QtGui.QColor(highLightColour[0], highLightColour[1], highLightColour[2])        
+        colours = {"text":qTextColour, "fade":qFadeColour, "highLight":qHighLightColour}
+        return colours
 
 DMInfo = DMInformation(jsonFile, statementCategories)
 
@@ -276,16 +336,35 @@ class StatementsQLW(QtGui.QListWidget):
         addStatement = "Nothing"
         editStatement = "Nothing"
         delStatement = "Nothing"
+        highlight = "Nothing"
+        unHighlight = "Nothing"
+        fade = "Nothing"
+        unFade = "Nothing"
+        hitItem = self.itemAt(position)
+        hitIndex = self.indexFromItem(hitItem).row()
 
         option = "Statement"
         if self.statementType == "voices": option = "Voice"
         elif self.statementType == "regardings": option = "Character"
-        if not (self.itemAt(position)): #Test right Click Position - have we hit an item
+        if not hitItem: #Test right Click Position - have we hit an item
             addStatement = menu.addAction(self.tr("Add New " + option)) 
         else:
             #Check that we are not trying to delete the DM!
             if not (self.statementType == "voices" and self.itemAt(position).text() == "DM"):
                 delStatement = menu.addAction(self.tr("Delete " + option))
+            menu.addSeparator()
+            #Now add Fade and Highlight Options - first if the object is faded then the only option should be to unfade it
+            if self.statementList.getStatements()[hitIndex].get()["fade"]: # we have a faded Object
+                unFade = menu.addAction(self.tr("Un-fade"))
+            else: #We are dealing with an unfaded object, so give it the option to fade and highlight/unhighlight
+                fade = unFade = menu.addAction(self.tr("Fade"))
+                menu.addSeparator()
+                if self.statementList.getStatements()[hitIndex].get()["highLight"]: #The object is highlighted
+                    unHighlight = menu.addAction(self.tr("Un-highlight"))
+                else:
+                    highlight = menu.addAction(self.tr("Highlight"))
+
+
         action = menu.exec_(self.viewport().mapToGlobal(position))
         if action == addStatement:
             # print ("Adding Statement")
@@ -293,7 +372,16 @@ class StatementsQLW(QtGui.QListWidget):
         elif action == delStatement:
             # print("Deleting Statement")
             self.deleteStatement(position)
-
+        elif action == fade:
+            self.statementList.getStatements()[hitIndex].get()["fade"] = 1
+        elif action == unFade:
+            self.statementList.getStatements()[hitIndex].get()["fade"] = 0
+        elif action == highlight:
+            self.statementList.getStatements()[hitIndex].get()["highLight"] = 1
+        elif action == unHighlight:
+            self.statementList.getStatements()[hitIndex].get()["highLight"] = 0
+        DMInfo.setCategoryDict(self.statementType, self.statementList)
+        self.populate()
 
     def addItems(self):
         # print ("Common Statements " + str(self.statementList.getStatements()))
@@ -308,8 +396,7 @@ class StatementsQLW(QtGui.QListWidget):
 
     def addStatement(self):
         self.statementList.add() #Add a new Item to the statementList
-        DMInfo.setCategoryDict(self.statementType, self.statementList)
-        self.populate()
+
 
     def deleteStatement(self, position):
         delItem = self.itemAt(position)
@@ -319,8 +406,8 @@ class StatementsQLW(QtGui.QListWidget):
                     QtGui.QMessageBox.No, QtGui.QMessageBox.Yes)
         if reply == QtGui.QMessageBox.Yes:
             self.statementList.remove(rowIndex)
-            DMInfo.setCategoryDict(self.statementType, self.statementList)
-            self.populate()
+
+
 
     def editStatement(self):
         newText = self.currentItem().text()  #Grab the text from the ListWidget that has just had the text edited
